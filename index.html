@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>六轴外固定架 · 数字交互 3D 复位演示</title>
+<title>HexaFrame 3D · 六轴外固定架数字化展示平台</title>
 <style>
   :root{
     --bg:#0d1117; --panel:rgba(22,27,34,.88); --border:#30363d;
@@ -14,15 +14,24 @@
   body{font-family:"PingFang SC","Microsoft YaHei",-apple-system,sans-serif;background:var(--bg);color:var(--text)}
   #stage{position:absolute;inset:0}
   /* ---------- 顶栏 ---------- */
-  header{position:absolute;top:0;left:0;right:0;z-index:10;padding:14px 22px;
-    background:linear-gradient(180deg,rgba(13,17,23,.92),rgba(13,17,23,0));pointer-events:none}
-  header h1{font-size:18px;font-weight:600;letter-spacing:.5px}
-  header h1 span{color:var(--accent)}
+  header{position:absolute;top:0;left:0;right:0;z-index:10;padding:12px 22px;
+    background:linear-gradient(180deg,rgba(13,17,23,.94),rgba(13,17,23,0))}
+  .nav{display:flex;align-items:center;gap:14px}
+  .brand{font-size:18px;font-weight:700;letter-spacing:.5px}
+  .brand b{color:var(--accent);font-weight:700}
+  .badges{display:flex;gap:6px;flex-wrap:wrap;margin-left:6px}
+  .badge{font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:9px;padding:2px 8px;white-space:nowrap}
+  .nav-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .nav-btn{background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;
+    padding:6px 14px;font-size:13px;cursor:pointer;transition:.2s;white-space:nowrap}
+  .nav-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .nav-btn.primary{background:var(--accent);border-color:var(--accent);color:#04121f;font-weight:600}
+  .nav-btn.primary:hover{filter:brightness(1.12);color:#04121f}
   header p{font-size:12px;color:var(--muted);margin-top:3px}
   /* ---------- 左侧控制面板 ---------- */
-  #panel{position:absolute;top:70px;left:20px;z-index:10;width:288px;
+  #panel{position:absolute;top:96px;left:20px;z-index:10;width:288px;
     background:var(--panel);border:1px solid var(--border);border-radius:12px;
-    backdrop-filter:blur(10px);padding:16px 16px 12px;max-height:calc(100% - 130px);overflow-y:auto}
+    backdrop-filter:blur(10px);padding:16px 16px 12px;max-height:calc(100% - 160px);overflow-y:auto}
   #panel::-webkit-scrollbar{width:6px}
   #panel::-webkit-scrollbar-thumb{background:#3a424d;border-radius:3px}
   .sec{margin-bottom:14px}
@@ -36,14 +45,19 @@
     background:var(--accent);margin-top:-5px;box-shadow:0 0 0 3px rgba(88,166,255,.18)}
   input[type=range]::-moz-range-track{height:4px;background:#30363d;border-radius:2px}
   input[type=range]::-moz-range-thumb{width:14px;height:14px;border:none;border-radius:50%;background:var(--accent)}
+  .sel-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-bottom:8px}
+  select{background:#161b22;color:var(--text);border:1px solid var(--border);border-radius:6px;
+    padding:4px 8px;font-size:12px;cursor:pointer;outline:none}
+  select:focus{border-color:var(--accent)}
   .btn{display:block;width:100%;padding:10px;border:none;border-radius:8px;font-size:14px;font-weight:600;
     cursor:pointer;margin-top:4px;transition:.2s}
   .btn-primary{background:var(--accent);color:#04121f}
   .btn-primary:hover{filter:brightness(1.12)}
   .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);margin-top:8px;font-weight:400;font-size:13px}
   .btn-ghost:hover{color:var(--text);border-color:#4a535e}
+  #stl-status{font-size:11px;color:var(--muted);margin-top:6px;min-height:14px}
   /* ---------- 右侧处方面板 ---------- */
-  #rx{position:absolute;top:70px;right:20px;z-index:10;width:262px;
+  #rx{position:absolute;top:96px;right:20px;z-index:10;width:262px;
     background:var(--panel);border:1px solid var(--border);border-radius:12px;
     backdrop-filter:blur(10px);padding:16px}
   #rx h3{font-size:14px;font-weight:600;margin-bottom:2px}
@@ -61,55 +75,131 @@
   .tag-aligned{background:rgba(63,185,80,.15);color:var(--ok)}
   footer{position:absolute;bottom:0;left:0;right:0;z-index:10;text-align:center;padding:10px;
     font-size:11px;color:var(--muted);background:linear-gradient(0deg,rgba(13,17,23,.85),rgba(13,17,23,0));pointer-events:none}
-  @media (max-width:860px){#rx{display:none}#panel{width:250px}}
+  footer a{color:var(--muted);text-decoration:none;border-bottom:1px dotted #4a535e}
+  /* ---------- 联系弹窗 ---------- */
+  #modal-mask{position:fixed;inset:0;z-index:100;background:rgba(1,4,9,.7);backdrop-filter:blur(4px);
+    display:none;align-items:center;justify-content:center}
+  #modal-mask.show{display:flex}
+  #modal{width:440px;max-width:calc(100vw - 40px);background:#161b22;border:1px solid var(--border);
+    border-radius:14px;padding:26px 26px 22px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+  #modal h2{font-size:18px;margin-bottom:4px}
+  #modal .lead{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6}
+  .use-cases{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+  .uc{border:1px solid var(--border);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.5}
+  .uc b{display:block;font-size:13px;margin-bottom:2px}
+  .uc span{color:var(--muted)}
+  .contact-line{display:flex;align-items:center;gap:8px;padding:9px 12px;border:1px solid var(--border);
+    border-radius:8px;font-size:13px;margin-bottom:8px}
+  .contact-line .k{color:var(--muted);font-size:12px;width:52px}
+  .contact-line a{color:var(--accent);text-decoration:none;word-break:break-all}
+  #modal .close-row{display:flex;gap:8px;margin-top:14px}
+  @media (max-width:860px){#rx{display:none}#panel{width:250px}.badges{display:none}}
 </style>
 </head>
 <body>
 <div id="stage"></div>
 
 <header>
-  <h1>六轴外固定架 <span>· 数字交互 3D 复位演示</span></h1>
-  <p>拖拽旋转视角 · 滚轮缩放 · 调整畸形参数观察支架与骨骼变化</p>
+  <div class="nav">
+    <div class="brand">HexaFrame <b>3D</b></div>
+    <div class="badges">
+      <span class="badge" data-i18n="badge1">实时六柱逆解</span>
+      <span class="badge" data-i18n="badge2">参数化畸形输入</span>
+      <span class="badge" data-i18n="badge3">复位动画</span>
+      <span class="badge" data-i18n="badge4">调整处方输出</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" id="btn-lang">EN</button>
+      <button class="nav-btn primary" id="btn-contact" data-i18n="contact_btn">器械公司定制</button>
+    </div>
+  </div>
+  <p data-i18n="hint">拖拽旋转视角 · 滚轮缩放 · 左侧调整畸形参数，右侧实时输出调整处方</p>
 </header>
 
 <div id="panel">
   <div class="sec">
-    <h3>成角畸形（°）</h3>
-    <div class="row"><span>内翻 / 外翻</span><span class="val" id="v-varus">0.0</span></div>
+    <h3 data-i18n="sec_deform">成角畸形（°）</h3>
+    <div class="row"><span data-i18n="lbl_varus">内翻 / 外翻</span><span class="val" id="v-varus">0.0</span></div>
     <input type="range" id="s-varus" min="-30" max="30" step="0.5" value="0">
-    <div class="row"><span>前屈 / 后伸</span><span class="val" id="v-flex">0.0</span></div>
+    <div class="row"><span data-i18n="lbl_flex">前屈 / 后伸</span><span class="val" id="v-flex">0.0</span></div>
     <input type="range" id="s-flex" min="-30" max="30" step="0.5" value="0">
-    <div class="row"><span>内旋 / 外旋</span><span class="val" id="v-rot">0.0</span></div>
+    <div class="row"><span data-i18n="lbl_rot">内旋 / 外旋</span><span class="val" id="v-rot">0.0</span></div>
     <input type="range" id="s-rot" min="-45" max="45" step="1" value="0">
   </div>
   <div class="sec">
-    <h3>位移畸形（mm）</h3>
-    <div class="row"><span>前后位移</span><span class="val" id="v-tx">0</span></div>
+    <h3 data-i18n="sec_disp">位移畸形（mm）</h3>
+    <div class="row"><span data-i18n="lbl_tx">前后位移</span><span class="val" id="v-tx">0</span></div>
     <input type="range" id="s-tx" min="-40" max="40" step="1" value="0">
-    <div class="row"><span>左右位移</span><span class="val" id="v-tz">0</span></div>
+    <div class="row"><span data-i18n="lbl_tz">左右位移</span><span class="val" id="v-tz">0</span></div>
     <input type="range" id="s-tz" min="-40" max="40" step="1" value="0">
-    <div class="row"><span>轴向（短缩/分离）</span><span class="val" id="v-ty">0</span></div>
+    <div class="row"><span data-i18n="lbl_ty">轴向（短缩/分离）</span><span class="val" id="v-ty">0</span></div>
     <input type="range" id="s-ty" min="-40" max="40" step="1" value="0">
   </div>
-  <button class="btn btn-primary" id="btn-correct">▶ 一键复位演示</button>
-  <button class="btn btn-ghost" id="btn-random">随机加载典型病例</button>
-  <button class="btn btn-ghost" id="btn-reset">清零</button>
+  <div class="sec">
+    <h3 data-i18n="sec_spec">支架规格（可定制）</h3>
+    <div class="sel-row"><span data-i18n="lbl_ringdia">环径</span>
+      <select id="sel-ring">
+        <option value="140">Ø140 mm</option>
+        <option value="160">Ø160 mm</option>
+        <option value="180">Ø180 mm</option>
+      </select>
+    </div>
+    <div class="sel-row"><span data-i18n="lbl_ringgap">环间距</span>
+      <select id="sel-gap">
+        <option value="250">250 mm</option>
+        <option value="300" selected>300 mm</option>
+        <option value="350">350 mm</option>
+      </select>
+    </div>
+  </div>
+  <div class="sec">
+    <h3 data-i18n="sec_model">骨骼模型</h3>
+    <button class="btn btn-ghost" id="btn-stl" data-i18n="btn_stl">导入 STL 骨骼模型</button>
+    <button class="btn btn-ghost" id="btn-bone-default" data-i18n="btn_bone">恢复默认骨骼</button>
+    <input type="file" id="file-stl" accept=".stl" style="display:none">
+    <div id="stl-status"></div>
+  </div>
+  <button class="btn btn-primary" id="btn-correct" data-i18n="btn_correct">▶ 一键复位演示</button>
+  <button class="btn btn-ghost" id="btn-random" data-i18n="btn_random">随机加载典型病例</button>
+  <button class="btn btn-ghost" id="btn-reset" data-i18n="btn_reset">清零</button>
 </div>
 
 <div id="rx">
-  <h3>调整处方 <span class="tag tag-deform" id="tag">畸形状态</span></h3>
-  <div class="sub">支架规格：环径 Ø140mm · 六柱 Stewart 平台</div>
+  <h3><span data-i18n="rx_title">调整处方</span> <span class="tag tag-deform" id="tag"></span></h3>
+  <div class="sub" data-i18n="rx_sub">支架规格：六柱 Stewart 平台 · 实时逆解</div>
   <table>
-    <thead><tr><th>柱号</th><th>当前 L (mm)</th><th>复位 Δ (mm)</th></tr></thead>
+    <thead><tr>
+      <th data-i18n="th_strut">柱号</th>
+      <th data-i18n="th_len">当前 L (mm)</th>
+      <th data-i18n="th_delta">复位 Δ (mm)</th>
+    </tr></thead>
     <tbody id="rx-body"></tbody>
   </table>
-  <div id="summary">
-    按每日调节 <b>1.0 mm</b> 计算<br>
-    预计复位周期：<b id="days">—</b>
-  </div>
+  <div id="summary"></div>
 </div>
 
-<footer>本演示仅用于交互可视化展示，不构成医疗器械或临床计算依据 · Three.js / WebGL 实时渲染</footer>
+<footer><span data-i18n="footer">本演示仅用于交互可视化展示，不构成医疗器械或临床计算依据 · Three.js / WebGL 实时渲染</span>
+  · <a href="https://github.com/pht1991/med-hexapod-demo" target="_blank">GitHub</a>
+</footer>
+
+<!-- 联系弹窗 -->
+<div id="modal-mask">
+  <div id="modal">
+    <h2 data-i18n="m_title">将本演示定制为您的产品</h2>
+    <p class="lead" data-i18n="m_lead">这是一套可复用的 Web 3D 数字化展示引擎，可根据贵司产品快速定制：</p>
+    <div class="use-cases">
+      <div class="uc"><b data-i18n="m_uc1">官网 3D 交互展示</b><span data-i18n="m_uc1d">产品原理可视化，替代静态图文</span></div>
+      <div class="uc"><b data-i18n="m_uc2">展会互动大屏</b><span data-i18n="m_uc2d">触屏操作，吸引驻足</span></div>
+      <div class="uc"><b data-i18n="m_uc3">销售演示工具</b><span data-i18n="m_uc3d">iPad 随身携带，随时演示</span></div>
+      <div class="uc"><b data-i18n="m_uc4">医学教学培训</b><span data-i18n="m_uc4d">病例参数化，可反复演示</span></div>
+    </div>
+    <div class="contact-line"><span class="k">GitHub</span><a href="https://github.com/pht1991" target="_blank">github.com/pht1991</a></div>
+    <div class="contact-line" id="line-email" style="display:none"><span class="k">Email</span><a id="link-email" href="#"></a></div>
+    <div class="close-row">
+      <button class="btn btn-primary" id="btn-close-modal" data-i18n="m_close">关闭</button>
+    </div>
+  </div>
+</div>
 
 <script type="importmap">
 { "imports": {
@@ -120,6 +210,71 @@
 <script type="module">
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+
+/* ================= 多语言 ================= */
+const I18N = {
+  zh: {
+    badge1:'实时六柱逆解', badge2:'参数化畸形输入', badge3:'复位动画', badge4:'调整处方输出',
+    hint:'拖拽旋转视角 · 滚轮缩放 · 左侧调整畸形参数，右侧实时输出调整处方',
+    sec_deform:'成角畸形（°）', sec_disp:'位移畸形（mm）', sec_spec:'支架规格（可定制）', sec_model:'骨骼模型',
+    lbl_varus:'内翻 / 外翻', lbl_flex:'前屈 / 后伸', lbl_rot:'内旋 / 外旋',
+    lbl_tx:'前后位移', lbl_tz:'左右位移', lbl_ty:'轴向（短缩/分离）',
+    lbl_ringdia:'环径', lbl_ringgap:'环间距',
+    btn_stl:'导入 STL 骨骼模型', btn_bone:'恢复默认骨骼',
+    btn_correct:'▶ 一键复位演示', btn_random:'随机加载典型病例', btn_reset:'清零',
+    rx_title:'调整处方', rx_sub:'支架规格：六柱 Stewart 平台 · 实时逆解',
+    th_strut:'柱号', th_len:'当前 L (mm)', th_delta:'复位 Δ (mm)',
+    sum_rate:'按每日调节', sum_mm:'mm 计算', sum_cycle:'预计复位周期：', sum_done:'已对位 ✓', sum_days:'天',
+    tag_deform:'畸形状态', tag_aligned:'复位完成',
+    footer:'本演示仅用于交互可视化展示，不构成医疗器械或临床计算依据 · Three.js / WebGL 实时渲染',
+    contact_btn:'器械公司定制',
+    m_title:'将本演示定制为您的产品',
+    m_lead:'这是一套可复用的 Web 3D 数字化展示引擎，可根据贵司产品快速定制：',
+    m_uc1:'官网 3D 交互展示', m_uc1d:'产品原理可视化，替代静态图文',
+    m_uc2:'展会互动大屏', m_uc2d:'触屏操作，吸引驻足',
+    m_uc3:'销售演示工具', m_uc3d:'iPad 随身携带，随时演示',
+    m_uc4:'医学教学培训', m_uc4d:'病例参数化，可反复演示',
+    m_close:'关闭',
+    stl_ok:'✓ 已加载', stl_fail:'解析失败，请确认是有效的 STL 文件',
+    lang_btn:'EN'
+  },
+  en: {
+    badge1:'Real-time hexapod IK', badge2:'Parametric deformity', badge3:'Correction animation', badge4:'Prescription output',
+    hint:'Drag to orbit · Scroll to zoom · Adjust deformity on the left, live prescription on the right',
+    sec_deform:'Angulation (°)', sec_disp:'Displacement (mm)', sec_spec:'Frame Specs (customizable)', sec_model:'Bone Model',
+    lbl_varus:'Varus / Valgus', lbl_flex:'Flexion / Extension', lbl_rot:'Int. / Ext. rotation',
+    lbl_tx:'AP displacement', lbl_tz:'Lateral displacement', lbl_ty:'Axial (shorten/lengthen)',
+    lbl_ringdia:'Ring diameter', lbl_ringgap:'Ring spacing',
+    btn_stl:'Import STL bone model', btn_bone:'Restore default bone',
+    btn_correct:'▶ Run Correction Demo', btn_random:'Load Random Case', btn_reset:'Reset',
+    rx_title:'Adjustment Plan', rx_sub:'Frame: 6-strut Stewart platform · real-time IK',
+    th_strut:'Strut', th_len:'Current L (mm)', th_delta:'Correction Δ (mm)',
+    sum_rate:'At a rate of', sum_mm:'mm/day', sum_cycle:'Est. correction period:', sum_done:'Aligned ✓', sum_days:'days',
+    tag_deform:'Deformed', tag_aligned:'Aligned',
+    footer:'For interactive visualization only — not a medical device or clinical calculator · Real-time Three.js / WebGL',
+    contact_btn:'Customize for Your Product',
+    m_title:'Customize This Engine for Your Product',
+    m_lead:'A reusable Web 3D digital showcase engine, quickly adaptable to your product line:',
+    m_uc1:'Website 3D Showcase', m_uc1d:'Interactive principle visualization over static images',
+    m_uc2:'Trade-show Kiosk', m_uc2d:'Touchscreen interactive display',
+    m_uc3:'Sales Demo Tool', m_uc3d:'Carry it on an iPad, present anywhere',
+    m_uc4:'Medical Education', m_uc4d:'Parameterized cases, repeatable demos',
+    m_close:'Close',
+    stl_ok:'✓ Loaded', stl_fail:'Parse failed — not a valid STL file',
+    lang_btn:'中文'
+  }
+};
+let lang = 'zh';
+const t = k => I18N[lang][k] || k;
+function applyLang(){
+  document.querySelectorAll('[data-i18n]').forEach(el => el.textContent = t(el.dataset.i18n));
+  document.getElementById('btn-lang').textContent = t('lang_btn');
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  document.title = lang === 'zh' ? 'HexaFrame 3D · 六轴外固定架数字化展示平台'
+                                 : 'HexaFrame 3D · Hexapod External Fixator Digital Showcase';
+  renderRx(); applyDeformity();
+}
 
 /* ================= 基础场景 ================= */
 const stage = document.getElementById('stage');
@@ -145,7 +300,6 @@ controls.autoRotate = true;
 controls.autoRotateSpeed = .6;
 renderer.domElement.addEventListener('pointerdown', ()=> controls.autoRotate = false);
 
-/* 灯光 */
 scene.add(new THREE.HemisphereLight(0x8899bb, 0x1a1f26, .9));
 const key = new THREE.DirectionalLight(0xffffff, 1.6);
 key.position.set(350, 600, 300);
@@ -158,38 +312,35 @@ const rim = new THREE.DirectionalLight(0x58a6ff, .5);
 rim.position.set(-400, 100, -300);
 scene.add(rim);
 
-/* 地面 */
-const ground = new THREE.Mesh(
-  new THREE.CircleGeometry(900, 64),
-  new THREE.ShadowMaterial({ opacity:.3 })
-);
-ground.rotation.x = -Math.PI/2;
-ground.position.y = -320;
-ground.receiveShadow = true;
+const ground = new THREE.Mesh(new THREE.CircleGeometry(900, 64), new THREE.ShadowMaterial({ opacity:.3 }));
+ground.rotation.x = -Math.PI/2; ground.position.y = -320; ground.receiveShadow = true;
 scene.add(ground);
-
-/* 参考网格 */
 const grid = new THREE.GridHelper(1200, 24, 0x30363d, 0x1b2129);
-grid.position.y = -319;
-scene.add(grid);
+grid.position.y = -319; scene.add(grid);
 
-/* ================= 六轴支架参数 ================= */
-const RING_R = 110, RING_T = 4, RING_GAP = 300;   // 环半径 / 环管径 / 环间距
+/* ================= 支架（参数化，可重建） ================= */
+let RING_R = 55, RING_GAP = 300;      // 环半径 / 环间距
 const N = 6;
-// 近端环锚点角度（每 60° 一根柱，环上错开 15°）
 const angTop = i => THREE.MathUtils.degToRad(i*60 - 15);
 const angBot = i => THREE.MathUtils.degToRad(i*60 + 15);
 
 const matRing  = new THREE.MeshStandardMaterial({ color:0x9aa7b4, metalness:.85, roughness:.32 });
 const matStrut = new THREE.MeshStandardMaterial({ color:0xffc857, metalness:.6,  roughness:.35 });
 const matClamp = new THREE.MeshStandardMaterial({ color:0x58a6ff, metalness:.4,  roughness:.5  });
+const matBone  = new THREE.MeshStandardMaterial({ color:0xe8d5b5, roughness:.55, metalness:.05 });
+
+const deformGroup = new THREE.Group();
+deformGroup.matrixAutoUpdate = false;
+scene.add(deformGroup);
+
+let proxRing = null, distRing = null, boneProx = null, boneDist = null;
+let struts = [], fractureRing = null;
+const strutGeo = new THREE.CylinderGeometry(2.6, 2.6, 1, 12);
 
 function makeRing(){
   const g = new THREE.Group();
-  const ring = new THREE.Mesh(new THREE.TorusGeometry(RING_R, RING_T, 18, 72), matRing);
-  ring.rotation.x = Math.PI/2;
-  ring.castShadow = true;
-  g.add(ring);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(RING_R, 4, 18, 72), matRing);
+  ring.rotation.x = Math.PI/2; ring.castShadow = true; g.add(ring);
   for(let i=0;i<N;i++){
     const ang = i*60 * Math.PI/180;
     const clamp = new THREE.Mesh(new THREE.BoxGeometry(16, 14, 10), matClamp);
@@ -199,93 +350,71 @@ function makeRing(){
   }
   return g;
 }
-const proxRing = makeRing();
-proxRing.position.y = RING_GAP/2;
-scene.add(proxRing);
-
-/* 远端组件：畸形组（骨段+远端环）挂在 deformGroup 上 */
-const deformGroup = new THREE.Group();
-deformGroup.matrixAutoUpdate = false;
-scene.add(deformGroup);
-
-const distRing = makeRing();
-distRing.position.y = -RING_GAP/2;
-deformGroup.add(distRing);
-
-/* 骨骼模型：近端段（世界） + 远端段（随畸形组） */
-const matBone = new THREE.MeshStandardMaterial({ color:0xe8d5b5, roughness:.55, metalness:.05 });
 function boneSegment(len, rTop, rBot){
   const g = new THREE.Group();
   const shaft = new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBot, len, 24), matBone);
-  shaft.position.y = -len/2;
-  shaft.castShadow = true;
-  g.add(shaft);
-  // 骨骺端膨大
+  shaft.position.y = -len/2; shaft.castShadow = true; g.add(shaft);
   const endA = new THREE.Mesh(new THREE.SphereGeometry(rTop*1.7, 24, 16), matBone);
-  endA.position.y = 6; endA.scale.y = .7; endA.castShadow = true;
-  g.add(endA);
+  endA.position.y = 6; endA.scale.y = .7; endA.castShadow = true; g.add(endA);
   const endB = new THREE.Mesh(new THREE.SphereGeometry(rBot*1.55, 24, 16), matBone);
-  endB.position.y = -len; endB.scale.y = .75; endB.castShadow = true;
-  g.add(endB);
+  endB.position.y = -len; endB.scale.y = .75; endB.castShadow = true; g.add(endB);
   return g;
 }
-const boneProx = boneSegment(RING_GAP/2 + 60, 26, 17);
-boneProx.position.y = RING_GAP/2;
-scene.add(boneProx);
-
-const boneDist = boneSegment(RING_GAP/2 + 60, 17, 24);
-boneDist.position.y = -RING_GAP/2;
-deformGroup.add(boneDist);
-
-/* 骨折断端提示线 */
-const fractureRing = new THREE.Mesh(
-  new THREE.TorusGeometry(30, 2, 10, 48),
-  new THREE.MeshBasicMaterial({ color:0xf85149, transparent:true, opacity:.8 })
-);
-fractureRing.rotation.x = Math.PI/2;
-scene.add(fractureRing);
-
-/* 六根支柱 */
-const strutGeo = new THREE.CylinderGeometry(2.6, 2.6, 1, 12);
-const struts = [];
-for(let i=0;i<N;i++){
-  const m = new THREE.Mesh(strutGeo, matStrut.clone());
-  m.castShadow = true;
-  scene.add(m);
-  struts.push(m);
+function disposeGroup(g){
+  g.traverse(o => { if(o.geometry) o.geometry.dispose(); });
+  if(g.parent) g.parent.remove(g);
 }
-const _vTop = new THREE.Vector3(), _vBot = new THREE.Vector3();
-function anchorTop(i, out){ return out.set(Math.cos(angTop(i))*RING_R, RING_GAP/2, Math.sin(angTop(i))*RING_R); }
-function anchorBot(i, out){
-  // 远端锚点 = 畸形变换后的位置
-  out.set(Math.cos(angBot(i))*RING_R, -RING_GAP/2, Math.sin(angBot(i))*RING_R).applyMatrix4(deformGroup.matrix);
-  return out;
-}
-const UP = new THREE.Vector3(0,1,0);
-function updateStruts(){
+function buildScaffold(){
+  [proxRing, distRing, boneProx, boneDist, fractureRing, ...struts].forEach(o => o && disposeGroup(o));
+  struts = [];
+  proxRing = makeRing(); proxRing.position.y = RING_GAP/2; scene.add(proxRing);
+  distRing = makeRing(); distRing.position.y = -RING_GAP/2; deformGroup.add(distRing);
+  boneProx = boneSegment(RING_GAP/2 + 60, 26, 17); boneProx.position.y = RING_GAP/2; scene.add(boneProx);
+  boneDist = boneSegment(RING_GAP/2 + 60, 17, 24); boneDist.position.y = -RING_GAP/2; deformGroup.add(boneDist);
+  if(stlProx){ scene.add(stlProx); }
+  if(stlDist){ deformGroup.add(stlDist); }
+  const showDefault = !stlProx;
+  boneProx.visible = boneDist.visible = showDefault;
+  fractureRing = new THREE.Mesh(
+    new THREE.TorusGeometry(RING_R*.3, 2, 10, 48),
+    new THREE.MeshBasicMaterial({ color:0xf85149, transparent:true, opacity:.8 }));
+  fractureRing.rotation.x = Math.PI/2;
+  scene.add(fractureRing);
   for(let i=0;i<N;i++){
-    anchorTop(i, _vTop);
-    anchorBot(i, _vBot);
-    const d = _vBot.clone().sub(_vTop);
-    const len = d.length();
-    const m = struts[i];
-    m.scale.set(1, len, 1);
-    m.position.copy(_vTop).addScaledVector(d, .5);
-    m.quaternion.setFromUnitVectors(UP, d.normalize());
+    const m = new THREE.Mesh(strutGeo, matStrut.clone());
+    m.castShadow = true; scene.add(m); struts.push(m);
   }
+  computeNeutral();
+  applyDeformity();
 }
 
-/* ================= 畸形参数与处方计算 ================= */
+/* ================= 畸形参数与处方 ================= */
 const params = { varus:0, flex:0, rot:0, tx:0, ty:0, tz:0 };
-const neutralLens = [], currentLens = [];
-// 中立位柱长
-{
-  const q = new THREE.Quaternion(), s = new THREE.Vector3(1,1,1), p = new THREE.Vector3();
-  const M = new THREE.Matrix4().compose(p, q, s);
+let neutralLens = [], currentLens = [0,0,0,0,0,0];
+function computeNeutral(){
+  const M = new THREE.Matrix4().compose(new THREE.Vector3(), new THREE.Quaternion(), new THREE.Vector3(1,1,1));
+  neutralLens = [];
   for(let i=0;i<N;i++){
     const a = anchorTop(i, new THREE.Vector3());
     const b = new THREE.Vector3(Math.cos(angBot(i))*RING_R, -RING_GAP/2, Math.sin(angBot(i))*RING_R).applyMatrix4(M);
     neutralLens.push(a.distanceTo(b));
+  }
+}
+function anchorTop(i, out){ return out.set(Math.cos(angTop(i))*RING_R, RING_GAP/2, Math.sin(angTop(i))*RING_R); }
+function anchorBot(i, out){
+  out.set(Math.cos(angBot(i))*RING_R, -RING_GAP/2, Math.sin(angBot(i))*RING_R).applyMatrix4(deformGroup.matrix);
+  return out;
+}
+const _vT = new THREE.Vector3(), _vB = new THREE.Vector3(), UP = new THREE.Vector3(0,1,0);
+function updateStruts(){
+  for(let i=0;i<N;i++){
+    anchorTop(i,_vT); anchorBot(i,_vB);
+    const d = _vB.clone().sub(_vT);
+    const len = d.length();
+    const m = struts[i];
+    m.scale.set(1, len, 1);
+    m.position.copy(_vT).addScaledVector(d, .5);
+    m.quaternion.setFromUnitVectors(UP, d.normalize());
   }
 }
 function applyDeformity(){
@@ -293,23 +422,22 @@ function applyDeformity(){
     THREE.MathUtils.degToRad(params.flex),
     THREE.MathUtils.degToRad(params.rot),
     THREE.MathUtils.degToRad(params.varus), 'XYZ');
-  const q = new THREE.Quaternion().setFromEuler(e);
-  const t = new THREE.Vector3(params.tx, params.ty, params.tz);
-  deformGroup.matrix.compose(t, q, new THREE.Vector3(1,1,1));
+  deformGroup.matrix.compose(
+    new THREE.Vector3(params.tx, params.ty, params.tz),
+    new THREE.Quaternion().setFromEuler(e),
+    new THREE.Vector3(1,1,1));
   updateStruts();
-  // 当前柱长
   for(let i=0;i<N;i++){
-    anchorTop(i,_vTop); anchorBot(i,_vBot);
-    currentLens[i] = _vTop.distanceTo(_vBot);
+    anchorTop(i,_vT); anchorBot(i,_vB);
+    currentLens[i] = _vT.distanceTo(_vB);
   }
   renderRx();
 }
 function renderRx(){
   const body = document.getElementById('rx-body');
-  let maxDelta = 0;
-  let html = '';
+  let maxDelta = 0, html = '';
   for(let i=0;i<N;i++){
-    const delta = neutralLens[i] - currentLens[i];   // 正=需延长
+    const delta = neutralLens[i] - currentLens[i];
     maxDelta = Math.max(maxDelta, Math.abs(delta));
     const cls = delta > 0.05 ? 'delta-pos' : delta < -0.05 ? 'delta-neg' : '';
     html += `<tr><td>S${i+1}</td><td>${currentLens[i].toFixed(1)}</td>` +
@@ -317,19 +445,87 @@ function renderRx(){
   }
   body.innerHTML = html;
   const days = Math.ceil(maxDelta / 1.0);
-  document.getElementById('days').textContent =
-    maxDelta < 0.05 ? '已对位 ✓' : `≈ ${days} 天`;
+  document.getElementById('summary').innerHTML = maxDelta < 0.05
+    ? `${t('sum_cycle')}<b>${t('sum_done')}</b>`
+    : `${t('sum_rate')} <b>1.0 ${t('sum_mm')}</b><br>${t('sum_cycle')}<b>≈ ${days} ${t('sum_days')}</b>`;
   const deformed = Math.abs(params.varus)+Math.abs(params.flex)+Math.abs(params.rot)+
                    Math.abs(params.tx)+Math.abs(params.ty)+Math.abs(params.tz) > 0.5;
   const tag = document.getElementById('tag');
-  tag.textContent = deformed ? '畸形状态' : '复位完成';
+  tag.textContent = deformed ? t('tag_deform') : t('tag_aligned');
   tag.className = 'tag ' + (deformed ? 'tag-deform' : 'tag-aligned');
 }
 
+/* ================= STL 导入（按断端平面拆分远近段） ================= */
+let stlProx = null, stlDist = null;
+function clearSTL(){
+  if(stlProx) disposeGroup(stlProx);
+  if(stlDist) disposeGroup(stlDist);
+  stlProx = stlDist = null;
+}
+function splitByPlane(geom){
+  const pos = geom.attributes.position;
+  const pA = [], pB = [];
+  for(let i=0;i<pos.count;i+=3){
+    const y = (pos.getY(i)+pos.getY(i+1)+pos.getY(i+2))/3;
+    const arr = y > 0 ? pA : pB;
+    for(let j=0;j<3;j++) arr.push(pos.getX(i+j), pos.getY(i+j), pos.getZ(i+j));
+  }
+  const mk = arr => {
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(arr, 3));
+    g.computeVertexNormals();
+    return g;
+  };
+  return { prox: mk(pA), dist: mk(pB) };
+}
+function loadSTLFile(file){
+  const status = document.getElementById('stl-status');
+  const reader = new FileReader();
+  reader.onload = e => {
+    try{
+      const geom = new STLLoader().parse(e.target.result);
+      geom.center();
+      // 归一化到当前环间距对应的高度
+      const bbox = new THREE.Box3().setFromBufferAttribute(geom.attributes.position);
+      const h = bbox.max.y - bbox.min.y;
+      const target = RING_GAP + 150;
+      const s = target / h;
+      geom.scale(s, s, s);
+      geom.computeVertexNormals();
+      const parts = splitByPlane(geom);
+      clearSTL();
+      stlProx = new THREE.Mesh(parts.prox, matBone);
+      stlProx.castShadow = true; scene.add(stlProx);
+      stlDist = new THREE.Mesh(parts.dist, matBone);
+      stlDist.castShadow = true; deformGroup.add(stlDist);
+      if(boneProx) boneProx.visible = false;
+      if(boneDist) boneDist.visible = false;
+      status.textContent = `✓ ${file.name} · ${t('stl_ok')}`;
+    }catch(err){
+      status.textContent = t('stl_fail');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+document.getElementById('btn-stl').onclick = ()=> document.getElementById('file-stl').click();
+document.getElementById('file-stl').onchange = e => { if(e.target.files[0]) loadSTLFile(e.target.files[0]); };
+document.getElementById('btn-bone-default').onclick = ()=>{
+  clearSTL();
+  document.getElementById('stl-status').textContent = '';
+  if(boneProx){ boneProx.visible = true; boneDist.visible = true; }
+};
+// 拖拽 STL 到页面直接导入
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => {
+  e.preventDefault();
+  const f = [...e.dataTransfer.files].find(f => f.name.toLowerCase().endsWith('.stl'));
+  if(f) loadSTLFile(f);
+});
+
 /* ================= UI 绑定 ================= */
 const bind = [
-  ['varus','v-varus','°'], ['flex','v-flex','°'], ['rot','v-rot','°'],
-  ['tx','v-tx',''], ['ty','v-ty',''], ['tz','v-tz','']
+  ['varus','v-varus'], ['flex','v-flex'], ['rot','v-rot'],
+  ['tx','v-tx'], ['ty','v-ty'], ['tz','v-tz']
 ];
 bind.forEach(([key, vid])=>{
   const s = document.getElementById('s-'+key), v = document.getElementById(vid);
@@ -350,13 +546,36 @@ function setParams(p){
 document.getElementById('btn-reset').onclick = ()=> setParams({varus:0,flex:0,rot:0,tx:0,ty:0,tz:0});
 document.getElementById('btn-random').onclick = ()=>{
   const r = (min,max)=> Math.round(min + Math.random()*(max-min));
-  setParams({
-    varus: r(-25,25), flex: r(-20,20), rot: r(-30,30),
-    tx: r(-30,30), ty: r(-25,10), tz: r(-30,30)
-  });
+  setParams({ varus:r(-25,25), flex:r(-20,20), rot:r(-30,30), tx:r(-30,30), ty:r(-25,10), tz:r(-30,30) });
 };
+/* 规格切换 → 重建支架 */
+document.getElementById('sel-ring').onchange = e => {
+  RING_R = parseInt(e.target.value) / 2;
+  buildScaffold();
+};
+document.getElementById('sel-gap').onchange = e => {
+  RING_GAP = parseInt(e.target.value);
+  buildScaffold();
+};
+/* 语言切换 */
+document.getElementById('btn-lang').onclick = ()=>{
+  lang = lang === 'zh' ? 'en' : 'zh';
+  applyLang();
+};
+/* 联系弹窗 */
+const EMAIL = '';   // ← 在这里填你的商务邮箱，留空则只显示 GitHub
+document.getElementById('btn-contact').onclick = ()=>{
+  const line = document.getElementById('line-email');
+  if(EMAIL){ line.style.display = 'flex'; document.getElementById('link-email').textContent = EMAIL;
+             document.getElementById('link-email').href = 'mailto:'+EMAIL; }
+  document.getElementById('modal-mask').classList.add('show');
+};
+document.getElementById('btn-close-modal').onclick = ()=> document.getElementById('modal-mask').classList.remove('show');
+document.getElementById('modal-mask').addEventListener('click', e=>{
+  if(e.target.id === 'modal-mask') e.target.classList.remove('show');
+});
 
-/* 一键复位动画 */
+/* ================= 一键复位动画 ================= */
 let anim = null;
 document.getElementById('btn-correct').onclick = ()=>{
   if(anim) anim.stop = true;
@@ -366,7 +585,7 @@ document.getElementById('btn-correct').onclick = ()=>{
     tick(now){
       if(anim.stop) return;
       let k = Math.min((now - t0)/dur, 1);
-      k = 1 - Math.pow(1-k, 3);          // easeOutCubic
+      k = 1 - Math.pow(1-k, 3);
       const p = {};
       for(const key in to) p[key] = from[key] + (to[key]-from[key])*k;
       setParams(p);
@@ -377,13 +596,13 @@ document.getElementById('btn-correct').onclick = ()=>{
 };
 
 /* ================= 主循环 ================= */
-applyDeformity();
+buildScaffold();
+applyLang();
 const clock = new THREE.Clock();
 (function loop(){
   requestAnimationFrame(loop);
   controls.update();
-  // 断端提示环呼吸
-  fractureRing.material.opacity = .5 + .3*Math.sin(clock.getElapsedTime()*3);
+  if(fractureRing) fractureRing.material.opacity = .5 + .3*Math.sin(clock.getElapsedTime()*3);
   renderer.render(scene, camera);
 })();
 addEventListener('resize', ()=>{
