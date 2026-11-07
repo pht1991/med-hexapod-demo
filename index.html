@@ -154,6 +154,7 @@
   </div>
   <div class="sec">
     <h3 data-i18n="sec_model">骨骼模型</h3>
+    <button class="btn btn-ghost" id="btn-sample" data-i18n="btn_sample">加载示例股骨模型</button>
     <button class="btn btn-ghost" id="btn-stl" data-i18n="btn_stl">导入 STL 骨骼模型</button>
     <button class="btn btn-ghost" id="btn-bone-default" data-i18n="btn_bone">恢复默认骨骼</button>
     <input type="file" id="file-stl" accept=".stl" style="display:none">
@@ -222,6 +223,7 @@ const I18N = {
     lbl_tx:'前后位移', lbl_tz:'左右位移', lbl_ty:'轴向（短缩/分离）',
     lbl_ringdia:'环径', lbl_ringgap:'环间距',
     btn_stl:'导入 STL 骨骼模型', btn_bone:'恢复默认骨骼',
+    btn_sample:'加载示例股骨模型',
     btn_correct:'▶ 一键复位演示', btn_random:'随机加载典型病例', btn_reset:'清零',
     rx_title:'调整处方', rx_sub:'支架规格：六柱 Stewart 平台 · 实时逆解',
     th_strut:'柱号', th_len:'当前 L (mm)', th_delta:'复位 Δ (mm)',
@@ -247,6 +249,7 @@ const I18N = {
     lbl_tx:'AP displacement', lbl_tz:'Lateral displacement', lbl_ty:'Axial (shorten/lengthen)',
     lbl_ringdia:'Ring diameter', lbl_ringgap:'Ring spacing',
     btn_stl:'Import STL bone model', btn_bone:'Restore default bone',
+    btn_sample:'Load sample femur model',
     btn_correct:'▶ Run Correction Demo', btn_random:'Load Random Case', btn_reset:'Reset',
     rx_title:'Adjustment Plan', rx_sub:'Frame: 6-strut Stewart platform · real-time IK',
     th_strut:'Strut', th_len:'Current L (mm)', th_delta:'Correction Δ (mm)',
@@ -478,35 +481,49 @@ function splitByPlane(geom){
   };
   return { prox: mk(pA), dist: mk(pB) };
 }
-function loadSTLFile(file){
+function importSTLBuffer(buffer, name){
   const status = document.getElementById('stl-status');
+  try{
+    const geom = new STLLoader().parse(buffer);
+    geom.center();
+    // 归一化到当前环间距对应的高度
+    const bbox = new THREE.Box3().setFromBufferAttribute(geom.attributes.position);
+    const h = bbox.max.y - bbox.min.y;
+    const target = RING_GAP + 150;
+    const s = target / h;
+    geom.scale(s, s, s);
+    geom.computeVertexNormals();
+    const parts = splitByPlane(geom);
+    clearSTL();
+    stlProx = new THREE.Mesh(parts.prox, matBone);
+    stlProx.castShadow = true; scene.add(stlProx);
+    stlDist = new THREE.Mesh(parts.dist, matBone);
+    stlDist.castShadow = true; deformGroup.add(stlDist);
+    if(boneProx) boneProx.visible = false;
+    if(boneDist) boneDist.visible = false;
+    status.textContent = `✓ ${name} · ${t('stl_ok')}`;
+  }catch(err){
+    status.textContent = t('stl_fail');
+  }
+}
+function loadSTLFile(file){
   const reader = new FileReader();
-  reader.onload = e => {
-    try{
-      const geom = new STLLoader().parse(e.target.result);
-      geom.center();
-      // 归一化到当前环间距对应的高度
-      const bbox = new THREE.Box3().setFromBufferAttribute(geom.attributes.position);
-      const h = bbox.max.y - bbox.min.y;
-      const target = RING_GAP + 150;
-      const s = target / h;
-      geom.scale(s, s, s);
-      geom.computeVertexNormals();
-      const parts = splitByPlane(geom);
-      clearSTL();
-      stlProx = new THREE.Mesh(parts.prox, matBone);
-      stlProx.castShadow = true; scene.add(stlProx);
-      stlDist = new THREE.Mesh(parts.dist, matBone);
-      stlDist.castShadow = true; deformGroup.add(stlDist);
-      if(boneProx) boneProx.visible = false;
-      if(boneDist) boneDist.visible = false;
-      status.textContent = `✓ ${file.name} · ${t('stl_ok')}`;
-    }catch(err){
-      status.textContent = t('stl_fail');
-    }
-  };
+  reader.onload = e => importSTLBuffer(e.target.result, file.name);
   reader.readAsArrayBuffer(file);
 }
+/* 示例股骨（MIT, BoneDensityMapping 测试数据, CT 重建远端股骨） */
+document.getElementById('btn-sample').onclick = async ()=>{
+  const status = document.getElementById('stl-status');
+  try{
+    status.textContent = '...';
+    const resp = await fetch('models/femur.stl');
+    if(!resp.ok) throw new Error(resp.status);
+    const buf = await resp.arrayBuffer();
+    importSTLBuffer(buf, 'femur.stl');
+  }catch(err){
+    status.textContent = t('stl_fail');
+  }
+};
 document.getElementById('btn-stl').onclick = ()=> document.getElementById('file-stl').click();
 document.getElementById('file-stl').onchange = e => { if(e.target.files[0]) loadSTLFile(e.target.files[0]); };
 document.getElementById('btn-bone-default').onclick = ()=>{
