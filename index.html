@@ -37,8 +37,9 @@
   .sec{margin-bottom:14px}
   .sec h3{font-size:12px;color:var(--muted);font-weight:600;letter-spacing:1px;
     text-transform:uppercase;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:10px}
-  .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px}
-  .row .val{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600}
+  .row{display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;gap:10px}
+  .row span:first-child{white-space:nowrap}
+  .row .val{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600;white-space:nowrap;flex-shrink:0}
   input[type=range]{width:100%;height:22px;-webkit-appearance:none;background:transparent;cursor:pointer}
   input[type=range]::-webkit-slider-runnable-track{height:4px;background:#30363d;border-radius:2px}
   input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
@@ -374,10 +375,8 @@ function buildScaffold(){
   distRing = makeRing(); distRing.position.y = -RING_GAP/2; deformGroup.add(distRing);
   boneProx = boneSegment(RING_GAP/2 + 60, 26, 17); boneProx.position.y = RING_GAP/2; scene.add(boneProx);
   boneDist = boneSegment(RING_GAP/2 + 60, 17, 24); boneDist.position.y = -RING_GAP/2; deformGroup.add(boneDist);
-  if(stlProx){ scene.add(stlProx); }
-  if(stlDist){ deformGroup.add(stlDist); }
-  const showDefault = !stlProx;
-  boneProx.visible = boneDist.visible = showDefault;
+  boneProx.visible = boneDist.visible = !stlBase;
+  if(stlBase) buildSTLMeshes();      // 换环径/环距时按新规格重建 STL 骨段
   fractureRing = new THREE.Mesh(
     new THREE.TorusGeometry(RING_R*.3, 2, 10, 48),
     new THREE.MeshBasicMaterial({ color:0xf85149, transparent:true, opacity:.8 }));
@@ -459,7 +458,7 @@ function renderRx(){
 }
 
 /* ================= STL 导入（按断端平面拆分远近段） ================= */
-let stlProx = null, stlDist = null;
+let stlProx = null, stlDist = null, stlBase = null;
 function clearSTL(){
   if(stlProx) disposeGroup(stlProx);
   if(stlDist) disposeGroup(stlDist);
@@ -481,6 +480,28 @@ function splitByPlane(geom){
   };
   return { prox: mk(pA), dist: mk(pB) };
 }
+/* 把已对齐的基础几何按当前支架规格缩放并拆分上屏 */
+function buildSTLMeshes(){
+  if(!stlBase) return;
+  clearSTL();
+  const geom = stlBase.clone();
+  geom.computeBoundingBox();
+  const sz2 = geom.boundingBox.getSize(new THREE.Vector3());
+  // 横向宽度适配环内径（骨头在环内留空隙），长度不超过环间距 1.2 倍
+  const maxW = Math.max(sz2.x, sz2.z);
+  let s = (RING_R * 2 * 0.6) / maxW;
+  const sLen = (RING_GAP * 1.2) / sz2.y;
+  if(sLen < s) s = sLen;
+  geom.scale(s, s, s);
+  geom.computeVertexNormals();
+  const parts = splitByPlane(geom);
+  stlProx = new THREE.Mesh(parts.prox, matBone);
+  stlProx.castShadow = true; scene.add(stlProx);
+  stlDist = new THREE.Mesh(parts.dist, matBone);
+  stlDist.castShadow = true; deformGroup.add(stlDist);
+  if(boneProx) boneProx.visible = false;
+  if(boneDist) boneDist.visible = false;
+}
 function importSTLBuffer(buffer, name){
   const status = document.getElementById('stl-status');
   try{
@@ -496,22 +517,10 @@ function importSTLBuffer(buffer, name){
       geom.rotateZ(-Math.PI/2);          // X 长轴 → Y
     }
     geom.center();
-    // 归一化到当前环间距对应的高度
-    geom.computeBoundingBox();
-    const h = geom.boundingBox.getSize(new THREE.Vector3()).y;
-    const target = RING_GAP + 150;
-    const s = target / h;
-    geom.scale(s, s, s);
-    geom.computeVertexNormals();
-    const parts = splitByPlane(geom);
-    clearSTL();
-    stlProx = new THREE.Mesh(parts.prox, matBone);
-    stlProx.castShadow = true; scene.add(stlProx);
-    stlDist = new THREE.Mesh(parts.dist, matBone);
-    stlDist.castShadow = true; deformGroup.add(stlDist);
-    if(boneProx) boneProx.visible = false;
-    if(boneDist) boneDist.visible = false;
-    const tris = (parts.prox.attributes.position.count + parts.dist.attributes.position.count) / 6;
+    stlBase = geom;
+    buildSTLMeshes();
+    applyDeformity();
+    const tris = stlBase.attributes.position.count / 3;
     status.textContent = `✓ ${name} · ${t('stl_ok')} (${tris | 0} △)`;
   }catch(err){
     console.error('[STL import]', err);
@@ -542,6 +551,7 @@ document.getElementById('btn-stl').onclick = ()=> document.getElementById('file-
 document.getElementById('file-stl').onchange = e => { if(e.target.files[0]) loadSTLFile(e.target.files[0]); };
 document.getElementById('btn-bone-default').onclick = ()=>{
   clearSTL();
+  stlBase = null;
   document.getElementById('stl-status').textContent = '';
   if(boneProx){ boneProx.visible = true; boneDist.visible = true; }
 };
@@ -558,11 +568,12 @@ const bind = [
   ['varus','v-varus'], ['flex','v-flex'], ['rot','v-rot'],
   ['tx','v-tx'], ['ty','v-ty'], ['tz','v-tz']
 ];
+const fmtVal = (key, val)=> (key==='varus'||key==='flex'||key==='rot') ? (+val).toFixed(1) : String(Math.round(+val));
 bind.forEach(([key, vid])=>{
   const s = document.getElementById('s-'+key), v = document.getElementById(vid);
   s.addEventListener('input', ()=>{
     params[key] = parseFloat(s.value);
-    v.textContent = s.value;
+    v.textContent = fmtVal(key, params[key]);
     applyDeformity();
   });
 });
@@ -570,7 +581,7 @@ function setParams(p){
   Object.assign(params, p);
   bind.forEach(([key])=>{
     document.getElementById('s-'+key).value = params[key];
-    document.getElementById('v-'+key).textContent = params[key];
+    document.getElementById('v-'+key).textContent = fmtVal(key, params[key]);
   });
   applyDeformity();
 }
