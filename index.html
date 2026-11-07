@@ -486,9 +486,19 @@ function importSTLBuffer(buffer, name){
   try{
     const geom = new STLLoader().parse(buffer);
     geom.center();
+    // 长轴自动对齐：骨骼长轴统一转到 Y（竖直），保证断端平面横切中段
+    const sz = new THREE.Vector3();
+    geom.computeBoundingBox();
+    geom.boundingBox.getSize(sz);
+    if(sz.z > sz.y && sz.z >= sz.x){
+      geom.rotateX(-Math.PI/2);          // Z 长轴 → Y
+    }else if(sz.x > sz.y && sz.x > sz.z){
+      geom.rotateZ(-Math.PI/2);          // X 长轴 → Y
+    }
+    geom.center();
     // 归一化到当前环间距对应的高度
-    const bbox = new THREE.Box3().setFromBufferAttribute(geom.attributes.position);
-    const h = bbox.max.y - bbox.min.y;
+    geom.computeBoundingBox();
+    const h = geom.boundingBox.getSize(new THREE.Vector3()).y;
     const target = RING_GAP + 150;
     const s = target / h;
     geom.scale(s, s, s);
@@ -501,8 +511,10 @@ function importSTLBuffer(buffer, name){
     stlDist.castShadow = true; deformGroup.add(stlDist);
     if(boneProx) boneProx.visible = false;
     if(boneDist) boneDist.visible = false;
-    status.textContent = `✓ ${name} · ${t('stl_ok')}`;
+    const tris = (parts.prox.attributes.position.count + parts.dist.attributes.position.count) / 6;
+    status.textContent = `✓ ${name} · ${t('stl_ok')} (${tris | 0} △)`;
   }catch(err){
+    console.error('[STL import]', err);
     status.textContent = t('stl_fail');
   }
 }
@@ -515,13 +527,15 @@ function loadSTLFile(file){
 document.getElementById('btn-sample').onclick = async ()=>{
   const status = document.getElementById('stl-status');
   try{
-    status.textContent = '...';
+    status.textContent = lang === 'zh' ? '下载模型中…' : 'Downloading…';
     const resp = await fetch('models/femur.stl');
-    if(!resp.ok) throw new Error(resp.status);
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    status.textContent = lang === 'zh' ? '解析中…' : 'Parsing…';
     const buf = await resp.arrayBuffer();
     importSTLBuffer(buf, 'femur.stl');
   }catch(err){
-    status.textContent = t('stl_fail');
+    console.error('[sample femur]', err);
+    status.textContent = lang === 'zh' ? '下载失败：'+err.message : 'Download failed: '+err.message;
   }
 };
 document.getElementById('btn-stl').onclick = ()=> document.getElementById('file-stl').click();
