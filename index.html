@@ -155,7 +155,13 @@
   </div>
   <div class="sec">
     <h3 data-i18n="sec_model">骨骼模型</h3>
-    <button class="btn btn-ghost" id="btn-sample" data-i18n="btn_sample">加载示例股骨模型</button>
+    <div class="sel-row"><span data-i18n="lbl_sample">示例模型</span>
+      <select id="sel-sample">
+        <option value="" data-i18n="sample_pick">选择…</option>
+        <option value="femur" data-i18n="sample_femur">全长股骨</option>
+        <option value="tibia" data-i18n="sample_tibia">胫骨 + 腓骨</option>
+      </select>
+    </div>
     <button class="btn btn-ghost" id="btn-stl" data-i18n="btn_stl">导入 STL 骨骼模型</button>
     <button class="btn btn-ghost" id="btn-bone-default" data-i18n="btn_bone">恢复默认骨骼</button>
     <input type="file" id="file-stl" accept=".stl" style="display:none">
@@ -223,8 +229,8 @@ const I18N = {
     lbl_varus:'内翻 / 外翻', lbl_flex:'前屈 / 后伸', lbl_rot:'内旋 / 外旋',
     lbl_tx:'前后位移', lbl_tz:'左右位移', lbl_ty:'轴向（短缩/分离）',
     lbl_ringdia:'环径', lbl_ringgap:'环间距',
+    lbl_sample:'示例模型', sample_pick:'选择…', sample_femur:'全长股骨', sample_tibia:'胫骨 + 腓骨',
     btn_stl:'导入 STL 骨骼模型', btn_bone:'恢复默认骨骼',
-    btn_sample:'加载示例股骨模型',
     btn_correct:'▶ 一键复位演示', btn_random:'随机加载典型病例', btn_reset:'清零',
     rx_title:'调整处方', rx_sub:'支架规格：六柱 Stewart 平台 · 实时逆解',
     th_strut:'柱号', th_len:'当前 L (mm)', th_delta:'复位 Δ (mm)',
@@ -240,6 +246,7 @@ const I18N = {
     m_uc4:'医学教学培训', m_uc4d:'病例参数化，可反复演示',
     m_close:'关闭',
     stl_ok:'✓ 已加载', stl_fail:'解析失败，请确认是有效的 STL 文件',
+    stl_downloading:'下载模型中…', stl_parsing:'解析中…', stl_dl_fail:'下载失败：',
     lang_btn:'EN'
   },
   en: {
@@ -249,8 +256,8 @@ const I18N = {
     lbl_varus:'Varus / Valgus', lbl_flex:'Flexion / Extension', lbl_rot:'Int. / Ext. rotation',
     lbl_tx:'AP displacement', lbl_tz:'Lateral displacement', lbl_ty:'Axial (shorten/lengthen)',
     lbl_ringdia:'Ring diameter', lbl_ringgap:'Ring spacing',
+    lbl_sample:'Sample model', sample_pick:'Select…', sample_femur:'Full femur', sample_tibia:'Tibia + fibula',
     btn_stl:'Import STL bone model', btn_bone:'Restore default bone',
-    btn_sample:'Load sample femur model',
     btn_correct:'▶ Run Correction Demo', btn_random:'Load Random Case', btn_reset:'Reset',
     rx_title:'Adjustment Plan', rx_sub:'Frame: 6-strut Stewart platform · real-time IK',
     th_strut:'Strut', th_len:'Current L (mm)', th_delta:'Correction Δ (mm)',
@@ -266,6 +273,7 @@ const I18N = {
     m_uc4:'Medical Education', m_uc4d:'Parameterized cases, repeatable demos',
     m_close:'Close',
     stl_ok:'✓ Loaded', stl_fail:'Parse failed — not a valid STL file',
+    stl_downloading:'Downloading…', stl_parsing:'Parsing…', stl_dl_fail:'Download failed: ',
     lang_btn:'中文'
   }
 };
@@ -532,19 +540,28 @@ function loadSTLFile(file){
   reader.onload = e => importSTLBuffer(e.target.result, file.name);
   reader.readAsArrayBuffer(file);
 }
-/* 示例股骨（MIT, BoneDensityMapping 测试数据, CT 重建远端股骨） */
-document.getElementById('btn-sample').onclick = async ()=>{
+/* 示例模型下拉（NIH 3D, CC0 公有领域） */
+const SAMPLES = {
+  femur: { url:'models/femur-full.stl', label:'femur-full.stl' },
+  tibia: { url:'models/tibia.stl',      label:'tibia.stl' }
+};
+let sampleLoading = false;
+document.getElementById('sel-sample').onchange = async e => {
+  const key = e.target.value;
+  if(!key || sampleLoading) return;
   const status = document.getElementById('stl-status');
   try{
-    status.textContent = lang === 'zh' ? '下载模型中…' : 'Downloading…';
-    const resp = await fetch('models/femur.stl');
+    sampleLoading = true;
+    status.textContent = t('stl_downloading');
+    const resp = await fetch(SAMPLES[key].url);
     if(!resp.ok) throw new Error('HTTP '+resp.status);
-    status.textContent = lang === 'zh' ? '解析中…' : 'Parsing…';
-    const buf = await resp.arrayBuffer();
-    importSTLBuffer(buf, 'femur.stl');
+    status.textContent = t('stl_parsing');
+    importSTLBuffer(await resp.arrayBuffer(), SAMPLES[key].label);
   }catch(err){
-    console.error('[sample femur]', err);
-    status.textContent = lang === 'zh' ? '下载失败：'+err.message : 'Download failed: '+err.message;
+    console.error('[sample model]', err);
+    status.textContent = t('stl_dl_fail') + err.message;
+  }finally{
+    sampleLoading = false;
   }
 };
 document.getElementById('btn-stl').onclick = ()=> document.getElementById('file-stl').click();
@@ -552,6 +569,7 @@ document.getElementById('file-stl').onchange = e => { if(e.target.files[0]) load
 document.getElementById('btn-bone-default').onclick = ()=>{
   clearSTL();
   stlBase = null;
+  document.getElementById('sel-sample').value = '';
   document.getElementById('stl-status').textContent = '';
   if(boneProx){ boneProx.visible = true; boneDist.visible = true; }
 };

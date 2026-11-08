@@ -1,34 +1,45 @@
-# HexaFrame 3D · 六轴外固定架数字化展示平台
+# HexaFrame 3D · Hexapod External Fixator Digital Showcase
 
-**在线演示：https://pht1991.github.io/med-hexapod-demo/**
+**Live demo: https://pht1991.github.io/med-hexapod-demo/**
 
-基于 Three.js 的六轴外固定架（Stewart 平台 / Taylor 支架类结构）Web 3D 交互演示。
+[简体中文](README.zh-CN.md)
 
-## 功能特性
+A Web-based 3D interactive demo of a hexapod external fixator (Stewart platform / Taylor-frame-type structure), built with Three.js — zero build step, single-file deployment.
 
-- **实时六柱逆解**：畸形参数（内外翻 / 屈伸 / 旋转 + 三向位移）实时驱动支架形变与骨骼复位动画
-- **调整处方输出**：S1~S6 每柱复位 Δ 值、每日 1mm 调节速率下的预计复位周期
-- **中英双语**：一键切换全站文案
-- **STL 骨骼模型导入**：点击上传或拖拽 `.stl` 文件进页面，自动按断端平面拆分远近骨段并归一化缩放；内置示例股骨一键加载
-- **支架规格参数化**：环径 Ø140/160/180mm、环距 250/300/350mm 实时重建
+> For interactive visualization only — not a medical device and not a clinical calculator.
 
-## 定制方向
+## Features
 
-适用于医疗器械厂商的：官网 3D 交互展示、展会互动大屏、销售演示工具（iPad）、医学教学培训。
+- **Real-time 6-strut inverse kinematics** — deformity parameters (varus/valgus, flexion/extension, rotation + 3D translation) drive frame deformation and bone reduction in real time
+- **Adjustment prescription output** — per-strut correction Δ (S1–S6) and estimated correction period at 1 mm/day
+- **Sample bone models** — full-length femur and tibia+fibula, selectable in-app, auto-aligned and split into proximal/distal segments at the fracture plane
+- **STL import** — upload or drag-and-drop any `.stl` bone model; automatic long-axis alignment, ring-fit scaling, and fracture-plane segmentation
+- **Parametric frame specs** — ring diameter Ø140/160/180 mm, ring spacing 250/300/350 mm, rebuilt live
+- **Bilingual UI** — English / 简体中文, one-click switch
+- **Random case generator** and one-click correction animation
 
-联系方式见页面内「器械公司定制」弹窗，或 GitHub: [pht1991](https://github.com/pht1991)
+## Customize This Engine
 
-## 运行
+Built for medical device manufacturers:
 
-纯静态单页，任意静态服务器即可：
+- Website 3D product showcase (replaces static images)
+- Interactive trade-show kiosk / large touchscreen
+- Portable sales demo (runs on an iPad)
+- Medical education & training
+
+Contact via the in-app "Customize" dialog, or GitHub: [pht1991](https://github.com/pht1991)
+
+## Run
+
+Pure static single page — any static server works:
 
 ```bash
 python3 -m http.server 8080
-# 或直接访问上面的在线演示
+# or just visit the live demo above
 ```
 
-## 许可证 / 致谢
+## License / Credits
 
-- 本仓库代码：MIT
-- 示例骨骼模型 `models/femur.stl`：来自 [BoneDensityMapping](https://github.com/Telfer/BoneDensityMapping)（MIT）的 CT 重建测试数据（distal femur）
-- 本演示仅用于交互可视化展示，不构成医疗器械或临床计算依据
+- Repository code: MIT
+- Sample bone models (`models/femur-full.stl`, `models/tibia.stl`): segmented from CT data of a full human leg, published on [NIH 3D](https://3d.nih.gov/) — [3DPX-000168 (femur)](https://3d.nih.gov/entries/3dpx-000168) and [3DPX-000169 (tibia & fibula)](https://3d.nih.gov/entries/3dpx-000169), **CC0 1.0 (public domain)**
+- This demo is for interactive visualization only and does not constitute a medical device or clinical basis
